@@ -26,3 +26,4 @@ go.work.sum
 
 # binary release
 bin/
+wg-trick-server
