@@ -1,0 +1,13 @@
+[Unit]
+Description=WG-trick-server Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wg-trick-server
+
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,64 @@
+#!/bin/bash
+if [ "$EUID" -ne 0 ]
+then echo "Please run as root or use sudo, because wireguard requires root privileges to configure the network interface"
+    exit 1
+fi
+
+# check for wg-quick
+if ! [ -x "$(command -v wg-quick)" ]; then
+    echo 'Error: wg-quick is not installed.' >&2
+    exit 1
+fi
+
+# wg-quick commands
+if [ "$1" != "connect" ]; then
+    wg-quick $@
+    exit
+fi
+
+echo ' [0;1;35;95m_[0m       [0;1;36;96m_[0;1;34;94m_[0m [0;1;35;95m__[0;1;31;91m__[0;1;33;93m__[0m      [0;1;35;95m__[0;1;31;91m__[0;1;33;93m__[0m [0;1;32;92m_[0;1;36;96m__[0;1;34;94m_[0m   [0;1;31;91m__[0;1;33;93m__[0m [0;1;32;92m_[0;1;36;96m__[0;1;34;94m__[0;1;35;95m_[0m [0;1;31;91m__[0m [0;1;33;93m_[0;1;32;92m_[0m
+[0;1;31;91m|[0m [0;1;33;93m|[0m     [0;1;34;94m/[0m [0;1;35;95m//[0m [0;1;31;91m_[0;1;33;93m__[0;1;32;92m_/[0m     [0;1;35;95m/[0;1;31;91m_[0m  [0;1;33;93m_[0;1;32;92m_/[0;1;36;96m/[0m [0;1;34;94m__[0m [0;1;35;95m\[0m [0;1;31;91m/[0m  [0;1;32;92m_/[0;1;36;96m/[0m [0;1;34;94m__[0;1;35;95m__[0;1;31;91m//[0m [0;1;33;93m/[0;1;32;92m/_[0;1;36;96m/[0m
+[0;1;33;93m|[0m [0;1;32;92m|[0m [0;1;36;96m/|[0m [0;1;34;94m/[0m [0;1;35;95m/[0;1;31;91m/[0m [0;1;33;93m/[0m [0;1;32;92m__[0m [0;1;36;96m_[0;1;34;94m__[0;1;35;95m__[0;1;31;91m_[0m [0;1;33;93m/[0m [0;1;32;92m/[0m  [0;1;36;96m/[0m [0;1;34;94m/[0;1;35;95m_/[0m [0;1;31;91m/[0m [0;1;33;93m/[0m [0;1;32;92m/[0m [0;1;36;96m/[0m [0;1;34;94m/[0m    [0;1;33;93m/[0m [0;1;32;92m,<[0m
+[0;1;32;92m|[0m [0;1;36;96m|/[0m [0;1;34;94m|[0;1;35;95m/[0m [0;1;31;91m//[0m [0;1;33;93m/[0;1;32;92m_/[0m [0;1;36;96m/[0;1;34;94m/_[0;1;35;95m__[0;1;31;91m__[0;1;33;93m//[0m [0;1;32;92m/[0m  [0;1;34;94m/[0m [0;1;35;95m_,[0m [0;1;31;91m_[0;1;33;93m/_[0;1;32;92m/[0m [0;1;36;96m/[0m [0;1;34;94m/[0m [0;1;35;95m/_[0;1;31;91m__[0m [0;1;33;93m/[0m [0;1;32;92m/[0;1;36;96m|[0m [0;1;34;94m|[0m
+[0;1;36;96m|_[0;1;34;94m_/[0;1;35;95m|_[0;1;31;91m_/[0m [0;1;33;93m\[0;1;32;92m__[0;1;36;96m__[0;1;34;94m/[0m       [0;1;32;92m/_[0;1;36;96m/[0m  [0;1;34;94m/[0;1;35;95m_/[0m [0;1;31;91m|[0;1;33;93m_|[0;1;32;92m/_[0;1;36;96m__[0;1;34;94m/[0m [0;1;35;95m\_[0;1;31;91m__[0;1;33;93m_/[0;1;32;92m/_[0;1;36;96m/[0m [0;1;34;94m|_[0;1;35;95m|[0m'
+USAGE="Usage: wg-trick connect <server> [<privatekey_path>]"
+
+if [ -z "$2" ]; then
+    echo $USAGE
+    exit -1
+else
+    SERVER=$2
+fi
+
+if [ -z "$3" ]; then
+    if [ ! -f /etc/wireguard/privatekey ]; then
+        echo "Key file not found"
+        exit -1
+    else
+        PRIVKEY=$(cat /etc/wireguard/privatekey)
+        PUBKEY=$(wg pubkey < /etc/wireguard/privatekey) || exit -1
+    fi
+else
+    if [ ! -f $3 ]; then
+        echo "Key file not found"
+        exit -1
+    fi
+    PRIVKEY=$(cat $3)
+    PUBKEY=$(wg pubkey < $3) || exit -1
+fi
+
+SAVEPATH='/etc/wireguard'
+if [ ! -d $SAVEPATH ]; then
+    mkdir -m 700 -p $SAVEPATH
+fi
+
+CONFIG_FILE="$SAVEPATH/$SERVER.conf"
+STATUS=$(curl -s -w "%{http_code}" -o "$CONFIG_FILE" "https://$SERVER/wg-trick/v1/$PUBKEY")
+
+if [ $STATUS -ne 200 ]; then
+    echo "Failed to get config file"
+    exit -1
+fi
+echo -e "[Interface]\nPrivateKey=$PRIVKEY\n$(cat $CONFIG_FILE)" > $CONFIG_FILE
+
+wg-quick up $SAVEPATH/$SERVER.conf
