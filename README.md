@@ -1,9 +1,9 @@
 ```
  _       __ ______      ______ ____   ____ ______ __ __
 | |     / // ____/     /_  __// __ \ /  _// ____// //_/
-| | /| / // / __ ______ / /  / /_/ / / / / /    / ,<   
-| |/ |/ // /_/ //_____// /  / _, _/_/ / / /___ / /| |  
-|__/|__/ \____/       /_/  /_/ |_|/___/ \____//_/ |_|  
+| | /| / // / __ ______ / /  / /_/ / / / / /    / ,<
+| |/ |/ // /_/ //_____// /  / _, _/_/ / / /___ / /| |
+|__/|__/ \____/       /_/  /_/ |_|/___/ \____//_/ |_|
 ```
 
 **WG-trick** is a tool that helps you configure the routes of WireGuard.
@@ -83,21 +83,21 @@ vpn.example.com {
 
 ### Server configure file
 
-It just reads a WireGuard conf file, but a bit of addtional options, here is the toy example:
+It just reads a WireGuard conf file, but a bit of additional options, here is the toy example:
 
 ```ini
 [Interface]
 Address = 192.168.1.1/24,10.0.0.2/8
-Mask = 192.168.1.1/24 #additional
+Mask = 192.168.1.0/24 #additional
 Endpoint = vpn.example.com #additional
-PublicKey =
+PublicKey = #additional
 PrivateKey =
 ListenPort =
 MTU =
 
 [Peer]
 # Wildchicken University
-Endpoint = vpn.wc.edu:1145
+Endpoint = vpn.example.edu:1145
 IsGateway = True #additional
 PublicKey =
 AllowedIPs = 10.0.0.0/8
@@ -109,6 +109,7 @@ AllowedIPs = 192.168.1.2/32
 ```
 
 - The `Mask` (not really a mask) indicates the subnet used by the WireGuard server.
+- The `PublicKey` under `Interface` is not required by WireGuard but we use it to distribute to client.
 - `Endpoint` under `Interface` is used to distribute your server domain (IP) to the client.
 - `IsGateway` indicates another server not in our subnet to which we forward the packets targeting its subnet.
 
@@ -121,8 +122,9 @@ That's all!
 Install:
 
 ```shell
+wget https://raw.githubusercontent.com/saeziae/wg-trick/refs/heads/main/wg-trick
+chmod +x wg-trick
 sudo cp wg-trick /usr/local/bin/
-sudo chmod +x /usr/local/bin/wg-trick
 ```
 
 Use:
@@ -131,8 +133,14 @@ Use:
 sudo wg-trick connect vpn.example.com
 ```
 
-other commands alike to `wg-quick` also work:
+The interface will use the domain name, you can also specify the private key if it is not the one in `/etc/wireguard/privatekey`:
 
 ```shell
-sudo wg-quick down vpn.example.com
+sudo wg-trick connect vpn.example.com /path/to/private/key
+```
+
+Other commands alike to `wg-quick` also work, like turning it off:
+
+```shell
+sudo wg-trick down vpn.example.com
 ```
